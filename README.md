@@ -14,10 +14,25 @@ Built to the spec in `BUILD_SPEC_pnw_show_finder.md`. Total cost: **$0/month** w
 
 ## ⚠️ ACTION REQUIRED — make it live (BUILD_SPEC §9.6)
 
-Everything is built, migrated, seeded, and tested. To take it the last mile
-(live Ticketmaster data + public URL) add these secrets. They could **not** be
-obtained from the build environment (no Ticketmaster account, no Cloudflare token,
-and those hosts plus Supabase are outside the build sandbox's network allowlist).
+The code is built and **green** (scraper venv: 35 unit tests pass on Python 3.12 &
+3.14; `web/` builds; e2e mocked & CI-runnable). What's left needs secrets/accounts
+that are **not present in this environment** — I verified `gh` is authenticated as
+`Dennisdeuce`, but **no repo secrets are set** and **no Supabase / Cloudflare /
+Ticketmaster credentials** are available here, so none of the steps below could be
+run autonomously. Each is a copy-paste command for you.
+
+**Ordered checklist (do top to bottom):**
+
+1. ☐ **Apply migration `0005`** to Supabase project `pnw-stage` (§A below).
+2. ☐ Set **Supabase** secrets (§1) and **re-seed** the registry (§A step 2).
+3. ☐ Set the **Ticketmaster** key (§2), then run `resolve_tm_venues.py` (§A step 3).
+4. ☐ Set **Cloudflare** + `VITE_*` secrets (§3).
+5. ☐ (optional) **DICE** key (§5) · **Bandsintown** (§4).
+6. ☐ Trigger **Scrape**, then **Deploy** (§ bottom).
+
+Without these, TM events still route to their venues by **name** (aliases + fuzzy
+match) the moment the seed is applied — id resolution (step 3) is an optimization,
+not a prerequisite.
 
 ### 1. Supabase service key → GitHub Actions secrets
 The anon (public) key is already wired into the frontend. The **service-role**
@@ -65,24 +80,28 @@ tries unauthenticated and fails soft (logged to `source_runs`).
 gh secret set DICE_API_KEY --body "<your DICE partner key>"
 ```
 
-### 6. Apply migration 0005, re-seed, then resolve TM venue ids
+### A. Apply migration 0005, re-seed, then resolve TM venue ids
 The coverage pass added `migrations/0005_platform_tags.sql` (a `venues.aliases`
 column + a `source_runs.note` column) and new seed data (aliases, platform tags,
 AXS/DICE sources). After the secrets above are set, run, in order:
 
 ```bash
-# 1) apply the new migration (Supabase SQL editor or CLI):
-supabase db push                       # or paste 0005_platform_tags.sql into the SQL editor
+# 1) apply the new migration — paste supabase/migrations/0005_platform_tags.sql
+#    into the Supabase SQL editor (Project pnw-stage), or with the CLI:
+supabase db push
 
+# set up the scraper venv (requirements are pinned for Python 3.12 AND 3.14):
 cd scraper
-python -m venv .venv && .venv/bin/pip install -r requirements.txt
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements.txt   # Windows
+# .venv/bin/python  -m pip install -r requirements.txt     # macOS/Linux
 
 # 2) re-seed the registry (idempotent upsert by slug):
-SUPABASE_URL=... SUPABASE_SERVICE_KEY=... .venv/bin/python seed_venues.py
+SUPABASE_URL=... SUPABASE_SERVICE_KEY=... .venv/Scripts/python seed_venues.py
 
 # 3) cache real Discovery venue ids into venues.tm_venue_id (gated on the TM key):
 TICKETMASTER_API_KEY=... SUPABASE_URL=... SUPABASE_SERVICE_KEY=... \
-  .venv/bin/python resolve_tm_venues.py
+  .venv/Scripts/python resolve_tm_venues.py
 ```
 
 `resolve_tm_venues.py` is **gated** — with no key it prints what it would do and
@@ -98,8 +117,9 @@ named `pnw-stage`. If you prefer Cloudflare's native Git integration instead, po
 it at this repo with **root directory = `web`**, **build command = `npm ci && npm
 run build`**, **output directory = `web/dist`**, and the two `VITE_*` build vars.
 
-Once 1–6 are set: trigger **Scrape** (`workflow_dispatch`) to load live events,
-then **Deploy** to publish. The app works the moment these land — no code changes.
+Once the checklist is complete: trigger **Scrape** (`workflow_dispatch`) to load
+live events, then **Deploy** to publish. The app works the moment these land — no
+code changes.
 
 ```bash
 # trigger the two workflows once secrets are in place:
