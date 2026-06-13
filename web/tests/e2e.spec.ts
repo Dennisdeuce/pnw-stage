@@ -41,14 +41,17 @@ test("calendar renders week, month, and year with no console errors", async ({ p
   await page.getByRole("button", { name: "Calendar" }).click();
   await expect(page.locator(".fc")).toBeVisible();
 
-  await page.getByRole("button", { name: "Month" }).click();
+  // Target FullCalendar's own per-view button classes. A role+name locator is
+  // ambiguous here: the prev/next buttons carry accessible names like "Previous
+  // month"/"Next month", and the view buttons' names aren't reliably exact.
+  await page.locator(".fc-dayGridMonth-button").click();
   await expect(page.locator(".fc-dayGridMonth-view")).toBeVisible();
   await page.screenshot({ path: `${SCREENS}/calendar-month.png`, fullPage: true });
 
-  await page.getByRole("button", { name: "Week" }).click();
+  await page.locator(".fc-timeGridWeek-button").click();
   await expect(page.locator(".fc-timeGridWeek-view")).toBeVisible();
 
-  await page.getByRole("button", { name: "Year" }).click();
+  await page.locator(".fc-multiMonthYear-button").click();
   await expect(page.locator(".fc-multiMonthYear-view")).toBeVisible();
   await page.screenshot({ path: `${SCREENS}/calendar-year.png`, fullPage: true });
 
