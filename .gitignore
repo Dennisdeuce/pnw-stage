@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+scraper/.venv/
+.venv/
+
+# Node / Vite
+node_modules/
+web/dist/
+*.log
+
+# Secrets & local env (anon key is public, but keep env files out of git)
+.env
+.env.*.local
+web/.env
+
+# Playwright
+web/test-results/
+web/playwright-report/
+web/tests/__screens__/
+
+# OS
+.DS_Store

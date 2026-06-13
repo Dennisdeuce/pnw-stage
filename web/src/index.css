@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-900 text-bone font-sans antialiased;
+  /* Faint vertical evergreen wash so the black has depth, not flatness. */
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, rgba(255, 90, 60, 0.08), transparent 60%),
+    radial-gradient(100% 60% at 100% 0%, rgba(77, 168, 255, 0.05), transparent 55%);
+  background-attachment: fixed;
+}
+
+/* Risograph-ish grain layer for poster imagery — the gig-flyer texture. */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+/* The ticket-stub edge: a perforated divider punched out of the card. */
+.stub-edge {
+  position: relative;
+}
+.stub-edge::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -1px;
+  width: 2px;
+  background-image: radial-gradient(circle, theme("colors.ink.900") 1.5px, transparent 1.6px);
+  background-size: 2px 9px;
+  background-repeat: repeat-y;
+}
+
+/* Marquee bulb strip under the wordmark. */
+.bulbs {
+  background-image: radial-gradient(circle, theme("colors.amber") 0 35%, transparent 38%);
+  background-size: 14px 14px;
+  background-position: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-flicker {
+    animation: none !important;
+  }
+}
+
+/* ---- FullCalendar dark theme overrides ---- */
+.fc {
+  --fc-border-color: theme("colors.ink.600");
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: theme("colors.ink.800");
+  --fc-today-bg-color: rgba(255, 90, 60, 0.08);
+  --fc-event-bg-color: theme("colors.ink.700");
+  --fc-event-border-color: theme("colors.coral");
+  --fc-event-text-color: theme("colors.bone");
+  color: theme("colors.bone");
+}
+.fc .fc-toolbar-title {
+  @apply font-display tracking-wide text-bone;
+}
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number,
+.fc .fc-list-day-text,
+.fc .fc-timegrid-axis-cushion,
+.fc .fc-timegrid-slot-label-cushion {
+  @apply text-moss no-underline;
+}
+.fc .fc-button {
+  @apply bg-ink-700 border-ink-600 text-bone font-sans capitalize;
+}
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:hover {
+  @apply bg-coral border-coral text-ink-900;
+}
+.fc .fc-event {
+  @apply cursor-pointer border-l-2 px-1 text-xs;
+}

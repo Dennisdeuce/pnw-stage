@@ -1,0 +1,47 @@
+name: Scrape (daily 4 AM Pacific)
+
+on:
+  schedule:
+    # GitHub cron is UTC and DST-blind, so we schedule both and let the
+    # idempotent upsert absorb the harmless duplicate run (BUILD_SPEC §5.5).
+    - cron: "0 11 * * *" # 04:00 PDT (Mar–Nov)
+    - cron: "0 12 * * *" # 04:00 PST (Nov–Mar)
+  workflow_dispatch: {}
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to commit the heartbeat that keeps the repo (and cron) alive
+    defaults:
+      run:
+        working-directory: scraper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+
+      - name: Run ingestion pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+          BANDSINTOWN_APP_ID: ${{ secrets.BANDSINTOWN_APP_ID }}
+        run: python pipeline.py
+
+      - name: Heartbeat commit (keeps GH cron from disabling after 60 days idle)
+        if: always()
+        working-directory: .
+        run: |
+          date -u +"Last scrape run: %Y-%m-%dT%H:%M:%SZ" > .github/last_scrape.txt
+          git config user.name "pnw-stage-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add .github/last_scrape.txt
+          git commit -m "chore: scrape heartbeat [skip ci]" || echo "nothing to commit"
+          git push || echo "push skipped"
