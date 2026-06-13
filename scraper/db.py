@@ -46,6 +46,7 @@ def record_run(
     found: int,
     upserted: int,
     error: str | None,
+    note: str | None = None,
 ) -> None:
     client.table("source_runs").insert(
         {
@@ -56,5 +57,6 @@ def record_run(
             "events_found": found,
             "events_upserted": upserted,
             "error": error,
+            "note": note,
         }
     ).execute()

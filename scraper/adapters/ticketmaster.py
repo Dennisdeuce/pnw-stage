@@ -14,6 +14,7 @@ from typing import Any
 from dateutil import parser as dateparser
 
 from models import RawEvent
+from venue_match import build_index, match_venue
 from .base import HttpClient
 
 API_BASE = "https://app.ticketmaster.com/discovery/v2/events.json"
@@ -36,6 +37,21 @@ class TicketmasterAdapter:
         self.config = config
         self.http = http
         self.api_key = os.environ.get("TICKETMASTER_API_KEY", "")
+        # Normalized venue-name index, built from the registry the pipeline injects
+        # under `_venues` (name + aliases -> slug). Empty when run standalone.
+        self.name_index = build_index(config.get("_venues") or [])
+        # TM venue names that fell through to the catch-all this run, with hit
+        # counts — surfaced in source_runs.note for alias tuning (§step 1).
+        self.unmatched: dict[str, int] = {}
+
+    @property
+    def run_notes(self) -> str | None:
+        """Diagnostics the pipeline records in source_runs.note (None if clean)."""
+        if not self.unmatched:
+            return None
+        top = sorted(self.unmatched.items(), key=lambda kv: kv[1], reverse=True)[:25]
+        names = ", ".join(f"{n}×{c}" for n, c in top)
+        return f"unmatched TM venues -> catch-all (add to venues.aliases): {names}"
 
     def fetch(self) -> list[RawEvent]:
         if not self.api_key:
@@ -100,8 +116,19 @@ class TicketmasterAdapter:
             return None
 
         tm_venues = (ev.get("_embedded") or {}).get("venues") or []
-        tm_venue_id = tm_venues[0].get("id") if tm_venues else None
-        venue_slug = venue_index.get(tm_venue_id or "", fallback_slug)
+        tm_venue = tm_venues[0] if tm_venues else {}
+        tm_venue_id = tm_venue.get("id")
+        tm_venue_name = tm_venue.get("name")
+
+        # Route to a registry venue: 1) resolved Discovery id, 2) normalized name,
+        # 3) fuzzy name (>=0.90), else 4) per-DMA catch-all + log for alias tuning.
+        venue_slug = venue_index.get(tm_venue_id or "")
+        if not venue_slug:
+            venue_slug = match_venue(tm_venue_name, self.name_index)
+        if not venue_slug:
+            venue_slug = fallback_slug
+            if tm_venue_name:
+                self.unmatched[tm_venue_name] = self.unmatched.get(tm_venue_name, 0) + 1
 
         dates = ev.get("dates", {})
         start = dates.get("start", {})
@@ -179,5 +206,5 @@ class TicketmasterAdapter:
             # TM event url is the primary on-sale link (we already excluded tmr).
             api_primary_url=ev.get("url"),
             source_url=ev.get("url"),
-            raw={"tm_id": ev.get("id"), "tm_venue_id": tm_venue_id},
+            raw={"tm_id": ev.get("id"), "tm_venue_id": tm_venue_id, "tm_venue_name": tm_venue_name},
         )

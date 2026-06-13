@@ -77,6 +77,8 @@ def build_adapter(source: dict[str, Any], http: HttpClient) -> Adapter:
     from .ticketmaster import TicketmasterAdapter
     from .html import HTMLAdapter
     from .stg import STGAdapter
+    from .axs import AXSAdapter
+    from .dice import DICEAdapter
 
     table = {
         "ics": ICSAdapter,
@@ -85,6 +87,8 @@ def build_adapter(source: dict[str, Any], http: HttpClient) -> Adapter:
         "ticketmaster": TicketmasterAdapter,
         "html": HTMLAdapter,
         "stg": STGAdapter,
+        "axs": AXSAdapter,
+        "dice": DICEAdapter,
     }
     cls = table.get(kind)
     if cls is None:

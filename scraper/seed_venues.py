@@ -30,6 +30,44 @@ GENERIC_SELECTORS = {
     "description": ".description, .summary",
 }
 
+# --- Venue aliases (mirrors migration 0005's venues.aliases column) ----------
+# Alternate names a venue appears under in the Ticketmaster Discovery feed. These
+# feed the normalized name index in adapters/ticketmaster.py so a DMA event whose
+# TM venue name is "Showbox at the Market" routes to `the-showbox` instead of the
+# per-DMA catch-all. Keep in lock-step with what 0005 documents — no drift.
+ALIASES: dict[str, list[str]] = {
+    "the-showbox": ["Showbox at the Market", "The Showbox", "Showbox Theatre"],
+    "showbox-sodo": ["Showbox SoDo", "Showbox SODO", "Showbox Sodo"],
+    "the-crocodile": ["Crocodile Cafe", "The Crocodile"],
+    "wamu-theater": ["WaMu Theater", "WAMU Theatre", "WAMU Theater"],
+}
+
+# --- Platform tags (the §coverage insight: ticketing fragments onto ~5 platforms)
+# Instead of 35 bespoke HTML scrapers we tag each fragmented venue with the
+# platform it actually sells on, plus the ids those platform adapters need.
+#   platform        : 'axs' | 'dice' | 'tessitura' | 'tixr' | 'house'
+#   axs_venue_id    : numeric AXS venue id (axs.com/venues/{id})
+#   tm_web_venue_id : legacy TicketWeb/TM-classic id (hint; the Discovery K-id is
+#                     resolved separately by resolve_tm_venues.py into tm_venue_id)
+#   dice_venue      : DICE per-venue permalink slug
+# axs/dice adapters EXIST -> their sources are active. The tail (tessitura/tixr/
+# house) has no adapter yet -> those sources are seeded is_active=False.
+VENUE_PLATFORMS: dict[str, dict] = {
+    "the-showbox":    {"platform": "axs",  "axs_venue_id": "101491"},
+    "showbox-sodo":   {"platform": "axs",  "axs_venue_id": "101493"},
+    "tractor-tavern": {"platform": "axs",  "axs_venue_id": "123396", "tm_web_venue_id": "123019"},
+    "the-crocodile":  {"platform": "dice", "axs_venue_id": "102301", "tm_web_venue_id": "123027",
+                       "dice_venue": "the-crocodile"},
+    # ---- tail: tagged now, adapters deferred (sources stay inactive) ----
+    "jazz-alley":         {"platform": "house"},
+    "benaroya-hall":      {"platform": "tessitura"},
+    "meany-center":       {"platform": "tessitura"},
+    "tacoma-comedy-club": {"platform": "tixr"},
+}
+
+# Platforms we have a working adapter for today.
+_ADAPTER_READY = {"axs", "dice"}
+
 # (slug, name, metro, region, city, state, website, source_kind, lat, lng)
 VENUES = [
     # ---- Seattle core: STG ----
@@ -122,7 +160,9 @@ def venue_rows() -> list[dict]:
             "website": website,
             "source_kind": kind,
             "is_active": True,
-            "source_config": {},
+            "aliases": ALIASES.get(slug, []),
+            # Platform hints {platform, axs_venue_id, tm_web_venue_id, dice_venue}.
+            "source_config": dict(VENUE_PLATFORMS.get(slug, {})),
         })
     return rows
 
@@ -199,20 +239,80 @@ def source_rows() -> list[dict]:
         },
     })
 
-    # Per-venue HTML sources for every html venue.
+    # The tail venues (jazz-alley/benaroya/meany/tacoma-comedy) fragment onto
+    # platforms with no adapter yet — drop their dead generic-HTML source and seed
+    # an inactive platform-tagged placeholder instead. Tractor/Crocodile/Showbox &
+    # the big rooms KEEP their HTML source active until a live TM run confirms the
+    # name-matcher attaches their events (BUILD §coverage step 5).
+    tail_slugs = {s for s, p in VENUE_PLATFORMS.items() if p["platform"] not in _ADAPTER_READY}
+
+    # Per-venue HTML sources for every html venue (tail ones inactive).
     html_venues = [(slug, website) for slug, _n, _m, _r, _c, _s, website, kind, *_ in VENUES if kind == "html"]
     for slug, website in html_venues:
         sources.append({
             "slug": slug,
             "kind": "html",
-            "is_active": True,
+            "is_active": slug not in tail_slugs,
             "config": {
                 "venue_slug": slug,
                 "page_url": website,           # TODO: point at the actual calendar path
                 "base_url": website,
-                "source_priority": 10,         # venue feed beats TM
+                "source_priority": 10,         # venue-direct beats platform beats TM
                 "selectors": GENERIC_SELECTORS,
+                "platform": VENUE_PLATFORMS.get(slug, {}).get("platform"),
                 "verified": False,
+            },
+        })
+
+    # ---- Platform adapters (config-driven, NOT per-venue code) ----
+    # AXS: one source per venue with a confirmed axs_venue_id.
+    for slug, p in VENUE_PLATFORMS.items():
+        axs_id = p.get("axs_venue_id")
+        if not axs_id:
+            continue
+        sources.append({
+            "slug": f"axs_{slug}",
+            "kind": "axs",
+            "is_active": True,
+            "config": {
+                "venue_slug": slug,
+                "axs_venue_id": axs_id,
+                "page_url": f"https://www.axs.com/venues/{axs_id}",
+                "source_priority": 20,         # platform-primary: below venue-direct(10), above TM(50)
+            },
+        })
+
+    # DICE: one source per venue with a dice_venue permalink.
+    for slug, p in VENUE_PLATFORMS.items():
+        dice_venue = p.get("dice_venue")
+        if not dice_venue:
+            continue
+        sources.append({
+            "slug": f"dice_{slug}",
+            "kind": "dice",
+            "is_active": True,
+            "config": {
+                "venue_slug": slug,
+                "dice_venue": dice_venue,
+                "events_url": f"https://api.dice.fm/events?filter%5Bvenues%5D%5B%5D={dice_venue}&page%5Bsize%5D=50",
+                "source_priority": 20,
+            },
+        })
+
+    # Tail: tessitura/tixr/house placeholders — seeded inactive until adapters exist.
+    for slug, p in VENUE_PLATFORMS.items():
+        platform = p["platform"]
+        if platform in _ADAPTER_READY:
+            continue
+        sources.append({
+            "slug": f"{platform}_{slug}",
+            "kind": platform,
+            "is_active": False,
+            "config": {
+                "venue_slug": slug,
+                "platform": platform,
+                "source_priority": 20,
+                "note": "adapter not built yet — see VENUE_PLATFORMS",
             },
         })
     return sources

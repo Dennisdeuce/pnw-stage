@@ -33,6 +33,7 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
           BANDSINTOWN_APP_ID: ${{ secrets.BANDSINTOWN_APP_ID }}
+          DICE_API_KEY: ${{ secrets.DICE_API_KEY }}
         run: python pipeline.py
 
       - name: Heartbeat commit (keeps GH cron from disabling after 60 days idle)

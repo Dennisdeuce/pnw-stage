@@ -21,6 +21,19 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _inject_tm_context(source, venue_list, resolved_index):
+    """For Ticketmaster sources, inject the venue registry (for name matching) and
+    merge resolved Discovery ids into venue_index. No-op for other adapters."""
+    if source.get("kind") != "ticketmaster":
+        return source
+    cfg = dict(source.get("config") or {})
+    cfg["_venues"] = venue_list
+    merged = dict(cfg.get("venue_index") or {})
+    merged.update(resolved_index)
+    cfg["venue_index"] = merged
+    return {**source, "config": cfg}
+
+
 def run() -> int:
     client = db.get_client()
     venues = db.fetch_venues(client)
@@ -29,6 +42,13 @@ def run() -> int:
     if not sources:
         print("No active sources found. Did you seed the registry?", file=sys.stderr)
         return 1
+
+    # Ticketmaster name-matching needs the venue registry (names + aliases) and the
+    # set of already-resolved Discovery ids. Build both once and inject per source.
+    resolved_index = {
+        v["tm_venue_id"]: v["slug"] for v in venues.values() if v.get("tm_venue_id")
+    }
+    venue_list = list(venues.values())
 
     http = HttpClient()
     total_found = 0
@@ -42,10 +62,13 @@ def run() -> int:
             found = upserted = 0
             ok = False
             error = None
+            note = None
             try:
+                source = _inject_tm_context(source, venue_list, resolved_index)
                 adapter = build_adapter(source, http)
                 raw_events = adapter.fetch()
                 found = len(raw_events)
+                note = getattr(adapter, "run_notes", None)
 
                 rows = []
                 for raw in raw_events:
@@ -69,7 +92,7 @@ def run() -> int:
                 print(f"[fail] {slug}: {error}", file=sys.stderr)
                 traceback.print_exc()
             finally:
-                db.record_run(client, slug, started, _now(), ok, found, upserted, error)
+                db.record_run(client, slug, started, _now(), ok, found, upserted, error, note)
     finally:
         http.close()
 

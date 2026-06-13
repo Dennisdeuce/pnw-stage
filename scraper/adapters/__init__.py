@@ -11,6 +11,8 @@ from .jsonfeed import JSONAdapter
 from .ticketmaster import TicketmasterAdapter
 from .html import HTMLAdapter
 from .stg import STGAdapter
+from .axs import AXSAdapter
+from .dice import DICEAdapter
 
 __all__ = [
     "Adapter",
@@ -22,4 +24,6 @@ __all__ = [
     "TicketmasterAdapter",
     "HTMLAdapter",
     "STGAdapter",
+    "AXSAdapter",
+    "DICEAdapter",
 ]

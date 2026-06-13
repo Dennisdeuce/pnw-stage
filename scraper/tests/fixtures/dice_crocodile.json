@@ -1,0 +1,39 @@
+{
+  "data": [
+    {
+      "id": "evt_abc123",
+      "name": "Mannequin Pussy",
+      "perm_name": "mannequin-pussy-the-crocodile-2026",
+      "status": "on-sale",
+      "date": "2026-07-19T03:00:00Z",
+      "timezone": "America/Los_Angeles",
+      "venues": [{"name": "The Crocodile", "city": {"name": "Seattle"}}],
+      "event_images": {
+        "landscape": "https://dice-media.imgix.net/mp-landscape.jpg",
+        "portrait": "https://dice-media.imgix.net/mp-portrait.jpg"
+      },
+      "price": {"amount": 2500, "currency": "USD"},
+      "summary_lineup": {"top_artists": [{"name": "Mannequin Pussy"}, {"name": "Soul Glo"}]},
+      "about": {"description": "Mannequin Pussy live at The Crocodile."},
+      "url": "https://dice.fm/event/mannequin-pussy-the-crocodile-2026"
+    },
+    {
+      "id": "evt_def456",
+      "name": "Tomberlin",
+      "perm_name": "tomberlin-the-crocodile-2026",
+      "status": "sold-out",
+      "date": "2026-08-03T02:30:00Z",
+      "timezone": "America/Los_Angeles",
+      "venues": [{"name": "The Crocodile", "city": {"name": "Seattle"}}],
+      "event_images": {"portrait": "https://dice-media.imgix.net/tomberlin.jpg"},
+      "price": {"amount": 2000, "currency": "USD"}
+    },
+    {
+      "id": "evt_nodate",
+      "name": "TBA Show",
+      "status": "announced",
+      "venues": [{"name": "The Crocodile"}]
+    }
+  ],
+  "links": {"next": null}
+}

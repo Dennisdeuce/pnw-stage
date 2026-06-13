@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>The Showbox — AXS</title>
+
+  <!-- A non-event JSON-LD block: the parser must ignore it. -->
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"MusicVenue","name":"The Showbox","address":{"@type":"PostalAddress","addressLocality":"Seattle","addressRegion":"WA"}}
+  </script>
+
+  <!-- A @graph wrapper holding two events (AXS commonly nests like this). -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "MusicEvent",
+        "name": "Charley Crockett",
+        "startDate": "2026-07-04T20:00:00-07:00",
+        "url": "/events/555001/charley-crockett-tickets",
+        "image": "https://media.axs.com/charley.jpg",
+        "description": "An evening with Charley Crockett.",
+        "location": {"@type": "MusicVenue", "name": "The Showbox"},
+        "offers": {
+          "@type": "Offer",
+          "price": "39.50",
+          "priceCurrency": "USD",
+          "url": "/events/555001/charley-crockett-tickets?src=buy"
+        }
+      },
+      {
+        "@type": "Event",
+        "name": "Japanese Breakfast",
+        "startDate": "2026-08-12T19:30:00-07:00",
+        "url": "/events/555002/japanese-breakfast-tickets",
+        "image": ["https://media.axs.com/jbrekkie.jpg"],
+        "location": {"@type": "MusicVenue", "name": "The Showbox"}
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <!-- A standalone event block outside @graph; should also be picked up. -->
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"ComedyEvent","name":"Comedy Night Live","startDate":"2026-09-01T20:00:00-07:00","url":"/events/555003/comedy-night-tickets","location":{"@type":"EventVenue","name":"The Showbox"}}
+  </script>
+  <h1>The Showbox — Upcoming Events</h1>
+</body>
+</html>
