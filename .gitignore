@@ -19,6 +19,9 @@ web/.env
 web/test-results/
 web/playwright-report/
 web/tests/__screens__/
+web/tests-live/__screens__/
+web/.last-build-info
+*.tsbuildinfo
 
 # OS
 .DS_Store

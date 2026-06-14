@@ -1,9 +1,9 @@
 name: Deploy (Cloudflare Pages)
 
+# DISABLED auto-trigger: the live host is GitHub Pages (see pages.yml). This
+# Cloudflare path is kept for optionality but runs only on manual dispatch, and
+# only works once CLOUDFLARE_API_TOKEN/ACCOUNT_ID + VITE_SUPABASE_* secrets exist.
 on:
-  push:
-    branches: ["main"]
-    paths: ["web/**", ".github/workflows/deploy.yml"]
   workflow_dispatch: {}
 
 jobs:
@@ -13,8 +13,8 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
       - run: npm ci
