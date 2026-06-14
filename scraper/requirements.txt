@@ -10,5 +10,18 @@ tatsu==5.15.1
 python-dateutil==2.9.0.post0
 tenacity==9.0.0
 rapidfuzz==3.14.5
-supabase==2.9.1
+# Supabase client + sub-deps. MUST stay >= the "remove jwt key validation to allow
+# new api keys" releases (supabase 2.16.0 / postgrest 1.1.1 / supabase-auth 2.12.2 /
+# realtime 2.5.2, all Jun 2025). Older clients (the previous 2.9.1 pin) send the
+# sb_secret_ key as `Authorization: Bearer` and validate it as a JWT; PostgREST
+# rejects the non-JWT token and SILENTLY falls back to the anon role, so the scraper
+# reads 0 rows from the RLS-locked `sources` table and aborts with "no active sources".
+# This project is new-keys-only (no legacy service_role JWT exists) — never re-pin old.
+# All transitive compiled deps (cryptography/cffi/pydantic-core/multidict/propcache/
+# yarl/websockets) ship wheels for BOTH Python 3.12 (CI) and 3.14 (local).
+supabase==2.31.0
+postgrest==2.31.0
+supabase-auth==2.31.0   # formerly `gotrue`; supabase>=2.16 depends on this package
+realtime==2.31.0
+storage3==2.31.0
 pytest==8.3.3
