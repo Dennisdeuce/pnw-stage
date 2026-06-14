@@ -197,13 +197,17 @@ def source_rows() -> list[dict]:
         },
     })
 
-    # Ticketmaster — Seattle/Tacoma DMA 819, Portland DMA 820, Vancouver BC by geo.
+    # Ticketmaster — Seattle/Tacoma DMA 385, Portland DMA 228, Vancouver BC by geo.
+    # NOTE: these are Ticketmaster's OWN Discovery `dmaId` values, NOT Nielsen DMA
+    # codes. The original 819 (Nielsen Seattle-Tacoma) / 820 (Nielsen Portland)
+    # matched nothing and returned 0 events; TM's ids are 385 (Seattle) / 228
+    # (Portland), confirmed live against the Discovery API.
     sources.append({
         "slug": "ticketmaster_seatac",
         "kind": "ticketmaster",
         "is_active": True,
         "config": {
-            "dma_id": 819,
+            "dma_id": 385,
             "classifications": ["music", "comedy", "arts & theatre"],
             "fallback_venue_slug": "tm-seattle-tacoma",
             "source_priority": 50,
@@ -216,7 +220,7 @@ def source_rows() -> list[dict]:
         "kind": "ticketmaster",
         "is_active": True,
         "config": {
-            "dma_id": 820,
+            "dma_id": 228,
             "classifications": ["music", "comedy", "arts & theatre"],
             "fallback_venue_slug": "tm-portland",
             "source_priority": 50,

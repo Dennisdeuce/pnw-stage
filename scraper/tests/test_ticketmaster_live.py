@@ -23,7 +23,7 @@ def _run(classifications):
         adapter = TicketmasterAdapter(
             slug="ticketmaster_seatac",
             config={
-                "dma_id": 819,
+                "dma_id": 385,  # Ticketmaster's Seattle dmaId (NOT Nielsen 819)
                 "classifications": classifications,
                 "fallback_venue_slug": "tm-seattle-tacoma",
                 "venue_index": {},
