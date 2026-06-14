@@ -22,5 +22,5 @@ Verify the ACTUAL current state before instructing the user or acting — never 
 - Repo: `Dennisdeuce/pnw-stage`. Supabase ref: `jryeliesxuzzqpsfeolk`.
 - GH Actions secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (sb_secret_…), `TICKETMASTER_API_KEY`.
 - Migration 0005 columns (`venues.aliases`, `source_runs.note`) were applied directly to the live DB; run full 0005 + re-seed before relying on AXS/DICE/alias coverage.
-- Hosting: Cloudflare Pages — root `web`, build `npm ci && npm run build`, output `web/dist`; env `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (= publishable key).
+- Hosting: **GitHub Pages** (repo is PUBLIC) — live at https://dennisdeuce.github.io/pnw-stage/. Deployed by `.github/workflows/pages.yml` (official Pages flow); Vite `base` is `/pnw-stage/`; build env `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` are baked into pages.yml (anon key is browser-safe). NOTE: the live anon key in use is a legacy `eyJ…` HS256 anon JWT (works today), NOT a publishable key — the "new-keys-only" note above describes the scraper's `sb_secret_` path, not the browser key. The old Cloudflare `deploy.yml` is disabled (manual dispatch only).
 - Reliable data sources: Ticketmaster Discovery (DMA queries) + STG. AXS/DICE are experimental, validated only against captured fixtures.
