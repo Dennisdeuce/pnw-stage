@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("feed loads with cards and only primary (non-resale) ticket links", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/pnw-stage/");
   const cards = page.locator("article");
   await expect(cards.first()).toBeVisible();
   expect(await cards.count()).toBeGreaterThanOrEqual(1);
@@ -37,7 +37,7 @@ test("calendar renders week, month, and year with no console errors", async ({ p
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
 
-  await page.goto("/");
+  await page.goto("/pnw-stage/");
   await page.getByRole("button", { name: "Calendar" }).click();
   await expect(page.locator(".fc")).toBeVisible();
 
@@ -59,18 +59,24 @@ test("calendar renders week, month, and year with no console errors", async ({ p
 });
 
 test("expander reveals Portland / Vancouver events on click", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/pnw-stage/");
   await expect(page.getByText("Crystal Ballroom")).toHaveCount(0);
   await page.getByRole("button", { name: /Show Portland/i }).click();
   await expect(page.getByText("Crystal Ballroom")).toBeVisible();
 });
 
 test("new-since-last-visit highlights, then resets on next visit", async ({ page, context }) => {
-  // Seed an old last-visit so the recent event counts as new.
+  // Seed an old last-visit so the recent event counts as new — but ONLY on the
+  // first navigation. sessionStorage persists across the reload below, so the
+  // app's own writeLastVisit(now()) stands on revisit (otherwise addInitScript
+  // would re-seed 2020 on every navigation and the reset assertion could never pass).
   await context.addInitScript(() => {
-    localStorage.setItem("pnw.lastVisit", "2020-01-01T00:00:00Z");
+    if (!sessionStorage.getItem("pnw.seeded")) {
+      localStorage.setItem("pnw.lastVisit", "2020-01-01T00:00:00Z");
+      sessionStorage.setItem("pnw.seeded", "1");
+    }
   });
-  await page.goto("/");
+  await page.goto("/pnw-stage/");
   const newSection = page.getByTestId("new-section");
   await expect(newSection).toBeVisible();
   await expect(newSection.locator("article")).toHaveCount(1);
@@ -83,7 +89,7 @@ test("new-since-last-visit highlights, then resets on next visit", async ({ page
 
 test("mobile (390px) has no horizontal overflow and registers a PWA manifest", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/pnw-stage/");
   await expect(page.locator("article").first()).toBeVisible();
 
   const overflow = await page.evaluate(
