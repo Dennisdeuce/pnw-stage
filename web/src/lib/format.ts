@@ -28,6 +28,9 @@ export const REGION_LABEL: Record<string, string> = {
   north: "North",
   south: "South",
   eastside: "Eastside",
+  "central wa": "Central WA",
+  kitsap: "Kitsap",
+  puyallup: "Puyallup",
   expandable: "Expanded"
 };
 

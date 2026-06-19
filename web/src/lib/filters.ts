@@ -16,7 +16,18 @@ export interface Filters {
   query: string;
 }
 
-export const ALL_REGIONS: Region[] = ["core", "north", "south", "eastside"];
+// Every non-expandable region that can appear in public_events. Must stay in sync
+// with venue regions in supabase/migrations (0006 added central wa / kitsap /
+// puyallup); a region missing here is silently filtered out of the feed.
+export const ALL_REGIONS: Region[] = [
+  "core",
+  "north",
+  "south",
+  "eastside",
+  "central wa",
+  "kitsap",
+  "puyallup"
+];
 
 export const DEFAULT_FILTERS: Filters = {
   categories: [],

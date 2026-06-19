@@ -1,6 +1,18 @@
 // Shape of a row from the `public_events` view (BUILD_SPEC §4).
 export type Category = "music" | "comedy" | "arts" | "other";
-export type Region = "core" | "north" | "south" | "eastside" | "expandable";
+// Region facets shown in-region (everything except "expandable", which is gated
+// behind the Portland/Vancouver expander). "central wa" (the Gorge), "kitsap",
+// and "puyallup" were added by migration 0006 — they MUST be listed here and in
+// ALL_REGIONS or the client-side region filter silently drops their events.
+export type Region =
+  | "core"
+  | "north"
+  | "south"
+  | "eastside"
+  | "central wa"
+  | "kitsap"
+  | "puyallup"
+  | "expandable";
 export type TicketType = "venue_primary" | "api_primary" | "artist" | "venue_page";
 export type Status =
   | "on_sale"
