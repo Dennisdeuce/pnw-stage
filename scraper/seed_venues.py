@@ -143,11 +143,72 @@ VENUES = [
     ("tm-vancouver-bc", "Other Vancouver BC venues (Ticketmaster)", "vancouver_bc", "expandable", "Vancouver", "BC", "https://www.ticketmaster.ca", "ticketmaster", None, None),
 ]
 
+# --- Migration 0006 curation (mirror — keep in lock-step) --------------------
+# Resolved Ticketmaster Discovery venue ids + name aliases for big rooms, plus the
+# Eastern WA venues that share the Seattle DMA but must NOT show up (is_active
+# False -> hidden from public_events). This mirrors the venues insert in
+# supabase/migrations/0006_venue_curation_and_region_filter.sql EXACTLY.
+#
+# Like the migration's `on conflict (slug) do update set`, applying this only
+# overrides tm_venue_id / aliases / is_active on venues that already exist in
+# VENUES above; brand-new slugs are inserted in full as Ticketmaster venues.
+#
+# (slug, name, metro, region, city, state, tm_venue_id, aliases, is_active)
+CURATED_VENUES = [
+    ("marymoor-park", "Marymoor Park", "seattle", "eastside", "Redmond", "WA", "KovZpa3qwe", ["Marymoor Live - Presented By Toyota", "Marymoor Live"], True),
+    ("chateau-ste-michelle", "Chateau Ste. Michelle", "seattle", "eastside", "Woodinville", "WA", "KovZpZAFkkJA", ["Chateau Ste Michelle Winery"], True),
+    ("benaroya-hall", "Benaroya Hall (Seattle Symphony)", "seattle", "core", "Seattle", "WA", "Z7r9jZadcG", ["Taper Auditorium", "Benaroya Hall - S. Mark Taper Auditorium"], True),
+    ("tulalip-resort-casino", "Tulalip Resort Casino", "everett", "north", "Tulalip", "WA", "KovZpZAaaEvA", ["Tulalip Amphitheatre"], True),
+    ("skagit-valley-casino", "Skagit Valley Casino Resort", "bellingham", "north", "Bow", "WA", "KovZpa3r8e", ["Skagit Valley Casino Pacific Showroom"], True),
+    ("gorge-amphitheatre", "Gorge Amphitheatre", "seattle", "central wa", "George", "WA", "KovZpZAEkk1A", ["Gorge Amphitheatre", "The Gorge", "Gorge Amphitheatre at George"], True),
+    ("taproot-theatre", "Taproot Theatre", "seattle", "core", "Seattle", "WA", "ZFr9jZe66d", ["Taproot Theatre"], True),
+    ("act-theatre", "ACT Theatre", "seattle", "core", "Seattle", "WA", "ZAr9jZ1e-x", ["ACT Theatre", "A Contemporary Theatre"], True),
+    ("5th-avenue-theatre", "The 5th Avenue Theatre", "seattle", "core", "Seattle", "WA", "KovZpa3Mze", ["The 5th Avenue Theatre", "5th Avenue Theatre"], True),
+    ("bagley-wright-theatre", "Bagley Wright Theatre", "seattle", "core", "Seattle", "WA", "Z6r9jZedae", ["Bagley Wright Theatre"], True),
+    ("woodland-park-zoo", "Woodland Park Zoo", "seattle", "core", "Seattle", "WA", "ZFr9jZd16d", ["Woodland Park Zoo", "ZooTunes"], True),
+    ("fisher-pavilion", "Fisher Pavilion at Seattle Center", "seattle", "core", "Seattle", "WA", "KovZpZAdAnkA", ["Fisher Pavilion At Seattle Center"], True),
+    ("madame-lous", "Madame Lou's", "seattle", "core", "Seattle", "WA", "Z7r9jZa7L0", ["Madame Lou's"], True),
+    ("q-nightclub", "Q Nightclub", "seattle", "core", "Seattle", "WA", "Z7r9jZadV7", ["Q Nightclub"], True),
+    ("rialto-theater-tacoma", "Rialto Theater", "tacoma", "core", "Tacoma", "WA", "KovZpa3zee", ["Rialto Theater"], True),
+    ("dune-peninsula", "Dune Peninsula", "tacoma", "core", "Tacoma", "WA", "Z7r9jZaAQw", ["Dune Peninsula"], True),
+    ("airport-tavern-tacoma", "Airport Tavern", "tacoma", "core", "Tacoma", "WA", "Z7r9jZad23", ["Airport Tavern"], True),
+    ("theatre-on-the-square", "Theatre on the Square", "tacoma", "core", "Tacoma", "WA", "KovZpZA1tlaA", ["Theatre On the Square"], True),
+    ("victory-hall-boxyard", "Victory Hall at The Boxyard", "tacoma", "core", "Tacoma", "WA", "Z7r9jZaAqC", ["Victory Hall at The Boxyard"], True),
+    ("washington-state-fair", "Washington State Fair", "tacoma", "puyallup", "Puyallup", "WA", "ZFr9jZe7FA", ["Washington State Fair"], True),
+    ("outlet-collection-seattle", "The Outlet Collection Seattle", "seattle", "south", "Auburn", "WA", "Z7r9jZaAkR", ["The Outlet Collection Seattle"], True),
+    ("muckleshoot-casino", "Muckleshoot Casino Events Center", "seattle", "south", "Auburn", "WA", "KovZ917AJEj", ["Muckleshoot Casino Events Center"], True),
+    ("federal-way-paec", "Federal Way PAEC", "seattle", "south", "Federal Way", "WA", "Z7r9jZadKL", ["Federal Way PAEC", "Federal Way Performing Arts and Event Center"], True),
+    ("remlinger-farms", "Remlinger Farms", "seattle", "eastside", "Carnation", "WA", "KovZ917AioZ", ["Remlinger Farms"], True),
+    ("apex-everett", "APEX Everett", "everett", "core", "Everett", "WA", "KovZ917Am28", ["APEX Everett"], True),
+    ("clearwater-casino-suquamish", "Clearwater Casino Resort", "seattle", "kitsap", "Suquamish", "WA", "KovZ917ALUH", ["Suquamish Clearwater Beach Rock Music & Sports Lounge", "Suquamish Clearwater Resort Lawn", "Suquamish Clearwater Casino Event Center", "Clearwater Casino Resort"], True),
+    ("kiana-lodge", "Kiana Lodge", "seattle", "kitsap", "Poulsbo", "WA", "KovZ917AJ9G", ["Kiana Lodge"], True),
+    ("admiral-theatre-bremerton", "Admiral Theatre", "seattle", "kitsap", "Bremerton", "WA", "ZFr9jZkF6a", ["Admiral Theatre - WA", "Admiral Theatre"], True),
+    # ---- Eastern WA: shares the Seattle DMA but out of region -> hidden ----
+    ("knitting-factory-spokane", "Knitting Factory - Spokane", "eastern_wa", "spokane", "Spokane", "WA", "KovZ917AJvZ", ["Knitting Factory - Spokane"], False),
+    ("becu-live-northern-quest", "BECU Live at Northern Quest", "eastern_wa", "spokane", "Airway Heights", "WA", "KovZ917AiIF", ["BECU Live at Northern Quest"], False),
+    ("northern-quest-casino", "Northern Quest Resort and Casino", "eastern_wa", "spokane", "Airway Heights", "WA", "KovZpZAIv7JA", ["Northern Quest Resort and Casino"], False),
+    ("toyota-center-kennewick", "Toyota Center Kennewick", "eastern_wa", "tri-cities", "Kennewick", "WA", "KovZpa34pe", ["Toyota Center Kennewick"], False),
+    ("legends-casino", "Legends Casino Event Center", "eastern_wa", "yakima", "Toppenish", "WA", "KovZpZAFFEeA", ["Legends Casino Event Center"], False),
+    ("martin-woldson-fox", "Martin Woldson Theater at the Fox", "eastern_wa", "spokane", "Spokane", "WA", "KovZ917A53V", ["Martin Woldson Theater at the Fox"], False),
+    ("one-spokane-stadium", "One Spokane Stadium", "eastern_wa", "spokane", "Spokane", "WA", "KovZ917ARuj", ["One Spokane Stadium"], False),
+    ("bing-crosby-theater", "Bing Crosby Theater", "eastern_wa", "spokane", "Spokane", "WA", "KovZ917A2d7", ["Bing Crosby Theater"], False),
+    ("numerica-veterans-arena", "Numerica Veterans Arena", "eastern_wa", "yakima", "Yakima", "WA", "KovZpZA1eklA", ["Numerica Veterans Arena"], False),
+]
+
+# Seattle/Tacoma DMA geo filter (mirror of migration 0006's sources update). Only
+# this DMA carries it — Portland/Vancouver are never anchored to Seattle.
+SEATAC_GEO_FILTER = {
+    "center_lat": 47.6062,
+    "center_lng": -122.3321,
+    "max_miles": 130,
+    "keep_tm_venue_ids": ["KovZpZAEkk1A"],  # Gorge Amphitheatre
+}
+
 
 def venue_rows() -> list[dict]:
-    rows = []
+    by_slug: dict[str, dict] = {}
     for slug, name, metro, region, city, state, website, kind, lat, lng in VENUES:
-        rows.append({
+        by_slug[slug] = {
             "slug": slug,
             "name": name,
             "metro": metro,
@@ -159,12 +220,42 @@ def venue_rows() -> list[dict]:
             "lng": lng,
             "website": website,
             "source_kind": kind,
+            "tm_venue_id": None,
             "is_active": True,
             "aliases": ALIASES.get(slug, []),
             # Platform hints {platform, axs_venue_id, tm_web_venue_id, dice_venue}.
             "source_config": dict(VENUE_PLATFORMS.get(slug, {})),
-        })
-    return rows
+        }
+
+    # Apply migration 0006 curation. Existing slugs get only tm_venue_id / aliases /
+    # is_active overridden (matching the SQL's `on conflict do update set`); new
+    # slugs are inserted in full as Ticketmaster venues.
+    for slug, name, metro, region, city, state, tm_id, aliases, is_active in CURATED_VENUES:
+        existing = by_slug.get(slug)
+        if existing is not None:
+            existing["tm_venue_id"] = tm_id
+            existing["aliases"] = list(aliases)
+            existing["is_active"] = is_active
+        else:
+            by_slug[slug] = {
+                "slug": slug,
+                "name": name,
+                "metro": metro,
+                "region": region,
+                "city": city,
+                "state": state,
+                "country": "CA" if state == "BC" else "US",
+                "lat": None,
+                "lng": None,
+                "website": "https://www.ticketmaster.com",
+                "source_kind": "ticketmaster",
+                "tm_venue_id": tm_id,
+                "is_active": is_active,
+                "aliases": list(aliases),
+                "source_config": {},
+            }
+
+    return list(by_slug.values())
 
 
 def source_rows() -> list[dict]:
@@ -213,6 +304,8 @@ def source_rows() -> list[dict]:
             "source_priority": 50,
             "venue_index": {},  # populate tm_venue_id -> venue_slug to route big rooms
             "tz": "America/Los_Angeles",
+            # Drop Eastern WA that shares DMA 385 (mirror of migration 0006).
+            "geo_filter": SEATAC_GEO_FILTER,
         },
     })
     sources.append({

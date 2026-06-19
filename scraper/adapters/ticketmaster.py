@@ -7,6 +7,7 @@ raises, the pipeline logs the source as failed, and the run continues (§5.6, §
 """
 from __future__ import annotations
 
+import math
 import os
 from datetime import datetime
 from typing import Any
@@ -20,6 +21,19 @@ from .base import HttpClient
 API_BASE = "https://app.ticketmaster.com/discovery/v2/events.json"
 PAGE_SIZE = 200
 MAX_PAGES = 5  # 5 * 200 = 1000 events/classification/run — plenty, stays well under budget
+
+_EARTH_RADIUS_MILES = 3958.7613
+
+
+def _haversine_miles(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Great-circle distance in miles between two (lat, lng) points."""
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng / 2) ** 2
+    )
+    return 2 * _EARTH_RADIUS_MILES * math.asin(math.sqrt(a))
 
 # Map TM classification segment -> our category.
 _SEGMENT_TO_CATEGORY = {
@@ -44,14 +58,38 @@ class TicketmasterAdapter:
         # counts — surfaced in source_runs.note for alias tuning (§step 1).
         self.unmatched: dict[str, int] = {}
 
+        # Optional per-source geo filter (only ticketmaster_seatac carries one):
+        # drop events whose venue is beyond `max_miles` of the metro center so
+        # Eastern WA doesn't leak through the Seattle DMA — UNLESS the venue's
+        # tm_venue_id is explicitly kept (e.g. the Gorge). Portland/Vancouver have
+        # no geo_filter, so they're untouched (never anchored to Seattle).
+        gf = config.get("geo_filter") or None
+        self.geo_filter = gf
+        if gf:
+            self._geo_center = (float(gf["center_lat"]), float(gf["center_lng"]))
+            self._geo_max_miles = float(gf["max_miles"])
+            self._geo_keep = set(gf.get("keep_tm_venue_ids") or [])
+        else:
+            self._geo_center = None
+            self._geo_max_miles = 0.0
+            self._geo_keep = set()
+        # Count of events dropped by the geo filter this run (for run_notes).
+        self.dropped_geo = 0
+
     @property
     def run_notes(self) -> str | None:
         """Diagnostics the pipeline records in source_runs.note (None if clean)."""
-        if not self.unmatched:
-            return None
-        top = sorted(self.unmatched.items(), key=lambda kv: kv[1], reverse=True)[:25]
-        names = ", ".join(f"{n}×{c}" for n, c in top)
-        return f"unmatched TM venues -> catch-all (add to venues.aliases): {names}"
+        parts: list[str] = []
+        if self.dropped_geo:
+            parts.append(
+                f"geo_filter dropped {self.dropped_geo} out-of-area events "
+                f"(> {self._geo_max_miles:g} mi from center)"
+            )
+        if self.unmatched:
+            top = sorted(self.unmatched.items(), key=lambda kv: kv[1], reverse=True)[:25]
+            names = ", ".join(f"{n}×{c}" for n, c in top)
+            parts.append(f"unmatched TM venues -> catch-all (add to venues.aliases): {names}")
+        return "; ".join(parts) if parts else None
 
     def fetch(self) -> list[RawEvent]:
         if not self.api_key:
@@ -119,6 +157,23 @@ class TicketmasterAdapter:
         tm_venue = tm_venues[0] if tm_venues else {}
         tm_venue_id = tm_venue.get("id")
         tm_venue_name = tm_venue.get("name")
+
+        # Per-source geo filter: skip events whose venue is beyond max_miles of the
+        # metro center, unless the venue is explicitly kept (e.g. the Gorge). The
+        # venue's coordinates come from the TM response; if they're missing we keep
+        # the event rather than risk dropping a legitimate in-area show.
+        if self.geo_filter and tm_venue_id not in self._geo_keep:
+            loc = tm_venue.get("location") or {}
+            try:
+                vlat = float(loc["latitude"])
+                vlng = float(loc["longitude"])
+            except (KeyError, TypeError, ValueError):
+                vlat = vlng = None
+            if vlat is not None and vlng is not None:
+                miles = _haversine_miles(self._geo_center[0], self._geo_center[1], vlat, vlng)
+                if miles > self._geo_max_miles:
+                    self.dropped_geo += 1
+                    return None
 
         # Route to a registry venue: 1) resolved Discovery id, 2) normalized name,
         # 3) fuzzy name (>=0.90), else 4) per-DMA catch-all + log for alias tuning.

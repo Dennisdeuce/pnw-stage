@@ -100,3 +100,84 @@ def test_adapter_unmatched_falls_back_and_logs():
     assert a.unmatched["Nowhere Special Lounge"] == 2
     note = a.run_notes
     assert note and "Nowhere Special Lounge" in note
+
+
+# --- geo filter (stop Eastern WA leaking through the Seattle DMA) ------------
+
+# Mirrors migration 0006's ticketmaster_seatac geo_filter exactly.
+SEATAC_GEO_FILTER = {
+    "center_lat": 47.6062,
+    "center_lng": -122.3321,
+    "max_miles": 130,
+    "keep_tm_venue_ids": ["KovZpZAEkk1A"],  # Gorge Amphitheatre — kept despite distance
+}
+
+
+def _geo_adapter():
+    return TicketmasterAdapter(
+        slug="ticketmaster_seatac",
+        config={
+            "_venues": VENUES,
+            "fallback_venue_slug": "tm-seattle-tacoma",
+            "geo_filter": SEATAC_GEO_FILTER,
+        },
+        http=None,
+    )
+
+
+def _tm_event_geo(venue_name, venue_id, lat, lng, date="2026-07-04"):
+    return {
+        "name": "Some Show",
+        "dates": {"start": {"localDate": date}},
+        "_embedded": {"venues": [{
+            "name": venue_name,
+            "id": venue_id,
+            "location": {"latitude": str(lat), "longitude": str(lng)},
+        }]},
+        "url": "https://www.ticketmaster.com/event/abc",
+    }
+
+
+def test_geo_filter_drops_eastern_wa_spokane():
+    a = _geo_adapter()
+    # Spokane (~228 mi from Seattle) is well outside the 130-mi radius and not on
+    # the keep list -> the event is dropped (parse returns None) and counted.
+    spokane = _tm_event_geo("Knitting Factory - Spokane", "KovZ917AJvZ", 47.6588, -117.4260)
+    raw = a._parse_event(spokane, {}, "tm-seattle-tacoma", "America/Los_Angeles")
+    assert raw is None
+    assert a.dropped_geo == 1
+    note = a.run_notes
+    assert note and "geo_filter dropped 1" in note
+
+
+def test_geo_filter_keeps_gorge_despite_distance():
+    a = _geo_adapter()
+    # Stress-test the keep-list override: a venue reported at a location OUTSIDE the
+    # 130-mi radius (~137 mi here) is still kept when its tm_venue_id is on
+    # keep_tm_venue_ids. This guards the Gorge against an outlying TM centroid or a
+    # future radius tightening, so the marquee central-WA venue never gets dropped.
+    gorge = _tm_event_geo("Gorge Amphitheatre", "KovZpZAEkk1A", 47.0989, -119.4990)
+    raw = a._parse_event(gorge, {}, "tm-seattle-tacoma", "America/Los_Angeles")
+    assert raw is not None
+    assert a.dropped_geo == 0
+
+
+def test_geo_filter_keeps_in_region_seattle_venue():
+    a = _geo_adapter()
+    # A core Seattle venue is well inside the radius -> always kept.
+    paramount = _tm_event_geo("Paramount Theatre", "KovZpZParam", 47.6131, -122.3318)
+    raw = a._parse_event(paramount, {}, "tm-seattle-tacoma", "America/Los_Angeles")
+    assert raw is not None
+    assert raw.venue_slug == "paramount-theatre"
+    assert a.dropped_geo == 0
+
+
+def test_geo_filter_absent_keeps_everything():
+    # Portland/Vancouver sources carry no geo_filter -> nothing is distance-dropped
+    # (they're never anchored to the Seattle center).
+    a = _adapter()  # no geo_filter in config
+    assert a.geo_filter is None
+    spokane = _tm_event_geo("Knitting Factory - Spokane", "KovZ917AJvZ", 47.6588, -117.4260)
+    raw = a._parse_event(spokane, {}, "tm-seattle-tacoma", "America/Los_Angeles")
+    assert raw is not None
+    assert a.dropped_geo == 0

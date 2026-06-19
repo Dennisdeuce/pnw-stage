@@ -65,3 +65,35 @@ def test_every_active_source_has_a_real_adapter():
             assert s["kind"] in KNOWN_ADAPTER_KINDS, f"{s['slug']} -> {s['kind']}"
             # build_adapter must construct without error for active sources.
             build_adapter(s, http=None)
+
+
+# --- migration 0006 curation mirror -----------------------------------------
+
+def test_curated_tm_venue_ids_and_aliases_seeded():
+    rows = venue_rows()
+    gorge = _venue(rows, "gorge-amphitheatre")
+    assert gorge["tm_venue_id"] == "KovZpZAEkk1A"
+    assert "The Gorge" in gorge["aliases"]
+    # Existing venue: only tm_venue_id/aliases/is_active overridden (kind preserved).
+    benaroya = _venue(rows, "benaroya-hall")
+    assert benaroya["tm_venue_id"] == "Z7r9jZadcG"
+    assert benaroya["source_kind"] == "html"  # not flipped to ticketmaster on conflict
+
+
+def test_eastern_wa_venues_seeded_inactive():
+    rows = venue_rows()
+    for slug in ("knitting-factory-spokane", "northern-quest-casino",
+                 "toyota-center-kennewick", "numerica-veterans-arena"):
+        v = _venue(rows, slug)
+        assert v["is_active"] is False, slug
+        assert v["region"] == "spokane" or v["metro"] == "eastern_wa"
+
+
+def test_seatac_source_carries_geo_filter_only():
+    rows = source_rows()
+    gf = _source(rows, "ticketmaster_seatac")["config"]["geo_filter"]
+    assert gf["max_miles"] == 130
+    assert gf["keep_tm_venue_ids"] == ["KovZpZAEkk1A"]  # Gorge kept
+    # Portland/Vancouver must NOT be anchored to Seattle (no geo_filter).
+    assert "geo_filter" not in _source(rows, "ticketmaster_portland")["config"]
+    assert "geo_filter" not in _source(rows, "ticketmaster_vancouver_bc")["config"]
