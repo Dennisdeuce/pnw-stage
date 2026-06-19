@@ -5,6 +5,7 @@ import multiMonthPlugin from "@fullcalendar/multimonth";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventInput, EventClickArg } from "@fullcalendar/core";
 import type { EventRow } from "../lib/types";
+import { pacificNaiveISO, isPacificMidnight } from "../lib/format";
 
 const CATEGORY_COLOR: Record<string, string> = {
   music: "#FF5A3C",
@@ -20,14 +21,21 @@ export function CalendarView({
   events: EventRow[];
   onOpen: (e: EventRow) => void;
 }) {
-  const fcEvents: EventInput[] = events.map((e) => ({
-    id: String(e.id),
-    title: `${e.headliner ?? e.title} · ${e.venue_name}`,
-    start: e.starts_at ?? e.date_local,
-    allDay: !e.starts_at,
-    borderColor: CATEGORY_COLOR[e.category] ?? "#7E8C82",
-    extendedProps: { row: e }
-  }));
+  // Date-only listings (no start_at, or exactly midnight Pacific) are all-day.
+  // Timed events are passed as an offset-less Pacific wall-clock ISO so
+  // FullCalendar's default 'local' zone renders the Pacific time verbatim and
+  // never shifts an event onto the wrong day for a non-Pacific viewer.
+  const fcEvents: EventInput[] = events.map((e) => {
+    const allDay = !e.starts_at || isPacificMidnight(e.starts_at);
+    return {
+      id: String(e.id),
+      title: `${e.headliner ?? e.title} · ${e.venue_name}`,
+      start: allDay ? e.date_local : pacificNaiveISO(e.starts_at as string),
+      allDay,
+      borderColor: CATEGORY_COLOR[e.category] ?? "#7E8C82",
+      extendedProps: { row: e }
+    };
+  });
 
   return (
     <div className="rounded-lg border border-ink-600 bg-ink-800 p-3 md:p-4">
@@ -42,6 +50,7 @@ export function CalendarView({
         buttonText={{ today: "Today", week: "Week", month: "Month", year: "Year" }}
         views={{ multiMonthYear: { type: "multiMonth", duration: { months: 12 } } }}
         height="auto"
+        eventTimeFormat={{ hour: "numeric", minute: "2-digit", meridiem: "short" }}
         events={fcEvents}
         eventClick={(arg: EventClickArg) => {
           arg.jsEvent.preventDefault();

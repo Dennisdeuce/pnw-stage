@@ -1,6 +1,6 @@
 import { Ticket, MapPin, Clock } from "lucide-react";
 import type { EventRow } from "../lib/types";
-import { showDate, showTime, priceLabel, posterFor } from "../lib/format";
+import { showDate, showTime, showTimeLabel, priceLabel, posterFor } from "../lib/format";
 import { StatusBadge, TicketKindBadge } from "./StatusBadge";
 
 interface Props {
@@ -11,7 +11,7 @@ interface Props {
 
 export function EventCard({ event, isNew, onOpen }: Props) {
   const doors = showTime(event.doors_at);
-  const show = showTime(event.starts_at);
+  const show = showTimeLabel(event.starts_at);
 
   return (
     <article
@@ -65,7 +65,7 @@ export function EventCard({ event, isNew, onOpen }: Props) {
                 <Clock size={12} />
                 {doors && <>doors {doors}</>}
                 {doors && show && <span className="text-ink-600">·</span>}
-                {show && <>show {show}</>}
+                {show && <>{show === "Time TBA" ? show : <>show {show}</>}</>}
               </span>
             )}
             {event.is_all_ages === true && (

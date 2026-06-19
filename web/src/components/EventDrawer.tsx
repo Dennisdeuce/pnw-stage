@@ -1,7 +1,7 @@
 import { X, Ticket, ExternalLink, MapPin, Clock, Calendar } from "lucide-react";
 import { useEffect } from "react";
 import type { EventRow } from "../lib/types";
-import { showDate, showTime, priceLabel, posterFor } from "../lib/format";
+import { showDate, showTime, showTimeLabel, priceLabel, posterFor } from "../lib/format";
 import { StatusBadge, TicketKindBadge } from "./StatusBadge";
 
 export function EventDrawer({ event, onClose }: { event: EventRow | null; onClose: () => void }) {
@@ -13,7 +13,7 @@ export function EventDrawer({ event, onClose }: { event: EventRow | null; onClos
 
   if (!event) return null;
   const doors = showTime(event.doors_at);
-  const show = showTime(event.starts_at);
+  const show = showTimeLabel(event.starts_at);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
@@ -50,7 +50,9 @@ export function EventDrawer({ event, onClose }: { event: EventRow | null; onClos
             {(doors || show) && (
               <Row
                 icon={<Clock size={14} />}
-                label={[doors && `Doors ${doors}`, show && `Show ${show}`].filter(Boolean).join(" · ")}
+                label={[doors && `Doors ${doors}`, show && (show === "Time TBA" ? show : `Show ${show}`)]
+                  .filter(Boolean)
+                  .join(" · ")}
               />
             )}
             <Row icon={<Ticket size={14} />} label={priceLabel(event)} />

@@ -29,7 +29,7 @@ export default function App() {
     writeLastVisit(new Date());
   }, []);
 
-  const { events, health, loading, error } = useEvents(filters.showExpandable);
+  const { events, health, total, loading, error } = useEvents(filters.showExpandable);
 
   // Keep the URL in sync (shareable / restorable — §6.6).
   useEffect(() => {
@@ -73,6 +73,8 @@ export default function App() {
             {tab === "feed" && (
               <FeedView
                 events={visible}
+                total={total}
+                filtered={activeFilterCount > 0}
                 isNew={isNew}
                 onOpen={setActive}
                 showExpandable={filters.showExpandable}

@@ -4,6 +4,8 @@ import { EventCard } from "./EventCard";
 
 interface Props {
   events: EventRow[];
+  total: number | null; // true upcoming total from the count query
+  filtered: boolean; // any client-side filter narrowing the set
   isNew: (e: EventRow) => boolean;
   onOpen: (e: EventRow) => void;
   showExpandable: boolean;
@@ -11,9 +13,12 @@ interface Props {
   onMarkSeen: () => void;
 }
 
-export function FeedView({ events, isNew, onOpen, showExpandable, onToggleExpandable, onMarkSeen }: Props) {
+export function FeedView({ events, total, filtered, isNew, onOpen, showExpandable, onToggleExpandable, onMarkSeen }: Props) {
   const fresh = events.filter(isNew);
   const rest = events.filter((e) => !isNew(e));
+  // Headline count: the true upcoming total when browsing unfiltered; the visible
+  // subset once a filter narrows things down.
+  const upcomingCount = filtered || total == null ? rest.length : total;
 
   return (
     <div className="flex flex-col gap-8">
@@ -51,7 +56,8 @@ export function FeedView({ events, isNew, onOpen, showExpandable, onToggleExpand
 
       <section>
         <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-moss">
-          {fresh.length > 0 ? "Everything else" : "Upcoming shows"} · {rest.length}
+          {fresh.length > 0 ? "Everything else" : "Upcoming shows"} ·{" "}
+          {fresh.length > 0 ? rest.length : upcomingCount}
         </h2>
         <div className="grid gap-3">
           {rest.map((e) => (
